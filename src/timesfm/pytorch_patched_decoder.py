@@ -712,16 +712,25 @@ class PatchedTimeSeriesDecoder(nn.Module):
       freq: torch.Tensor,
   ) -> torch.Tensor:
     num_outputs = len(self.config.quantiles) + 1
+    print(f"Model Input shape: {input_ts.shape}")
     model_input, patched_padding, stats, _ = self._preprocess_input(
         input_ts=input_ts,
         input_padding=input_padding,
     )
     f_emb = self.freq_emb(freq)  # B x 1 x D
     model_input += f_emb
+    print(model_input.shape)
     model_output = self.stacked_transformer(model_input, patched_padding)
+    print(model_output.shape)
+
+    # model_output_shape = 32,16,1280
+    # 32 gepaddede anzahl der patches, gepadded auf global batch size
+    # 16 ?
+    # 1280 embedding space
+    # # Here?
 
     output_ts = self._postprocess_output(model_output, num_outputs, stats)
-    return output_ts
+    return output_ts, model_output
 
   def decode(
       self,
@@ -757,6 +766,7 @@ class PatchedTimeSeriesDecoder(nn.Module):
     final_out = input_ts
     context_len = final_out.shape[1]
     full_outputs = []
+    full_embeddings = []
     if paddings.shape[1] != final_out.shape[1] + horizon_len:
       raise ValueError(
           "Length of paddings must match length of input + horizon_len:"
@@ -769,7 +779,7 @@ class PatchedTimeSeriesDecoder(nn.Module):
       current_padding = paddings[:, 0:final_out.shape[1]]
       input_ts = final_out[:, -max_len:]
       input_padding = current_padding[:, -max_len:]
-      fprop_outputs = self(input_ts, input_padding, freq)
+      fprop_outputs, embedding_ = self(input_ts, input_padding, freq)
       if return_forecast_on_context and step_index == 0:
         # For the first decodings step, collect the model forecast on the
         # context except the unavailable first input batch forecast.
@@ -784,6 +794,7 @@ class PatchedTimeSeriesDecoder(nn.Module):
       new_full_ts = fprop_outputs[:, -1, :output_patch_len, :]
       # (full batch, last patch, output_patch_len, all output indices)
       full_outputs.append(new_full_ts)
+      full_embeddings.append(embedding_)
       final_out = torch.concatenate([final_out, new_ts], axis=-1)
 
     if return_forecast_on_context:
@@ -796,4 +807,4 @@ class PatchedTimeSeriesDecoder(nn.Module):
       full_outputs = torch.concatenate(full_outputs, axis=1)[:,
                                                              0:horizon_len, :]
 
-    return (full_outputs[:, :, 0], full_outputs)
+    return (full_outputs[:, :, 0], full_outputs, full_embeddings)

@@ -17,6 +17,7 @@ print(
 )
 from timesfm.timesfm_base import freq_map, TimesFmCheckpoint, TimesFmHparams, TimesFmBase
 try:
+  raise Exception("Force PyTorch.")
   print("Loaded Jax TimesFM.")
   from timesfm.timesfm_jax import TimesFmJax as TimesFm
   from timesfm import data_loader

@@ -122,9 +122,12 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
       freq = [0] * len(inputs)
 
     input_ts, input_padding, inp_freq, pmap_pad = self._preprocess(inputs, freq)
+    print(f"input_ts shape: {input_ts.shape}")
+
     with torch.no_grad():
       mean_outputs = []
       full_outputs = []
+      full_embedding_outputs = []
       assert input_ts.shape[0] % self.global_batch_size == 0
       for i in range(input_ts.shape[0] // self.global_batch_size):
         input_ts_in = torch.from_numpy(
@@ -141,7 +144,9 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
                 :,
             ],
                      dtype=np.int32)).long().to(self._device)
-        mean_output, full_output = self._model.decode(
+
+        print(f"Input_ts_in shape: {input_ts_in.shape}")
+        mean_output, full_output, full_embeddings = self._model.decode(
             input_ts=input_ts_in,
             paddings=input_padding_in,
             freq=inp_freq_in,
@@ -150,22 +155,30 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
         )
         mean_output = mean_output.detach().cpu().numpy()
         full_output = full_output.detach().cpu().numpy()
+        full_embeddings = full_embeddings.detach().cpu().numpy()
         mean_output = np.array(mean_output)
         full_output = np.array(full_output)
+        full_embeddings = np.array(full_embeddings)
         mean_outputs.append(mean_output)
         full_outputs.append(full_output)
+        full_embedding_outputs.append(full_embeddings)
 
     mean_outputs = np.concatenate(mean_outputs, axis=0)
     full_outputs = np.concatenate(full_outputs, axis=0)
+    full_embedding_outputs = np.concatenate(full_embedding_outputs, axis=0)
 
     if pmap_pad > 0:
       mean_outputs = mean_outputs[:-pmap_pad, ...]
       full_outputs = full_outputs[:-pmap_pad, ...]
+      full_embedding_outputs = full_embedding_outputs[:-pmap_pad, ...]
 
     if window_size is not None:
       mean_outputs = mean_outputs[0::2, ...] + mean_outputs[1::2, ...]
       full_outputs = full_outputs[0::2, ...] + full_outputs[1::2, ...]
+      full_embedding_outputs = full_embedding_outputs[0::2, ...] + full_embedding_outputs[1::2, ...]
     if inp_min >= 0 and truncate_negative:
       mean_outputs = np.maximum(mean_outputs, 0.0)
       full_outputs = np.maximum(full_outputs, 0.0)
-    return mean_outputs, full_outputs
+      full_embedding_outputs = np.maximum(full_embedding_outputs, 0.0)
+
+    return mean_outputs, full_outputs, full_embedding_outputs
