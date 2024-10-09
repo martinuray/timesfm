@@ -712,16 +712,15 @@ class PatchedTimeSeriesDecoder(nn.Module):
       freq: torch.Tensor,
   ) -> torch.Tensor:
     num_outputs = len(self.config.quantiles) + 1
-    print(f"Model Input shape: {input_ts.shape}")
+
     model_input, patched_padding, stats, _ = self._preprocess_input(
         input_ts=input_ts,
         input_padding=input_padding,
     )
     f_emb = self.freq_emb(freq)  # B x 1 x D
     model_input += f_emb
-    print(model_input.shape)
+
     model_output = self.stacked_transformer(model_input, patched_padding)
-    print(model_output.shape)
 
     # model_output_shape = 32,16,1280
     # 32 gepaddede anzahl der patches, gepadded auf global batch size

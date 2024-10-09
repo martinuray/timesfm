@@ -122,7 +122,6 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
       freq = [0] * len(inputs)
 
     input_ts, input_padding, inp_freq, pmap_pad = self._preprocess(inputs, freq)
-    print(f"input_ts shape: {input_ts.shape}")
 
     with torch.no_grad():
       mean_outputs = []
@@ -145,7 +144,6 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
             ],
                      dtype=np.int32)).long().to(self._device)
 
-        print(f"Input_ts_in shape: {input_ts_in.shape}")
         mean_output, full_output, full_embeddings = self._model.decode(
             input_ts=input_ts_in,
             paddings=input_padding_in,
