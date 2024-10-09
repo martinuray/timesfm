@@ -153,7 +153,7 @@ class TimesFmTorch(timesfm_base.TimesFmBase):
         )
         mean_output = mean_output.detach().cpu().numpy()
         full_output = full_output.detach().cpu().numpy()
-        full_embeddings = full_embeddings.detach().cpu().numpy()
+        full_embeddings = np.asarray(full_embeddings).squeeze()
         mean_output = np.array(mean_output)
         full_output = np.array(full_output)
         full_embeddings = np.array(full_embeddings)
